@@ -1,35 +1,46 @@
 #!/usr/bin/env python3
-
-#filter
-r=2
-f=[]
-sigma=3
-amp=1
-
-t=[
-[1,0,1,0,1],
-[1,1,1,1,1],
-[0,0,1,0,0],
-[1,1,0,1,0],
-[1,1,1,1,1]
-]
+from PIL import Image
+import numpy as np
+DEBUG=False
 
 #image
-height=16
-width=16
-image=[]
+img = Image.open("file.bmp")
+tmp=list(img.getdata())
 
-def mean(a ,b):
-	wid=len(a[0])
-	hei=len(a)
+height=img.height
+width=img.width
+
+image=[]
+for i in range(height):
+	image.append([0]*width)
+
+for i in range(len(tmp)):
+	x=i%width
+	y=i//width
+	image[y][x]=tmp[i]
+
+
+#filter
+f=[]
+r=5
+sigma=5//2
+amp=sigma+1
+
+img.close()
+
+#weighted mean
+def mean(mask, data, x0 ,y0):
+	wid=len(mask[0])
+	hei=len(mask)
 	c=0
 	sum=0
-	for i in range(hei):
-		for j in range(wid):
-			sum+=a[i][j]*b[i][j]
-			c+=1
+	for y in range(hei):
+		for x in range(wid):
+			if (x+x0-r)<width and (y+y0-r)<height:
+				sum+=mask[y][x]*data[y+y0-r][x+x0-r]
+				c+=1
 	return sum/c
-
+#gaussian function
 def g(x, y, x0, y0, sig, A):
 	e=2.718281828459045
 	a=( (x-x0)**2 ) / (2*sig**2)
@@ -46,22 +57,22 @@ for y in range(2*r+1):
 	f.append(row)
 #filter is ready
 
-print("filter matrix:")
-for y in range(2*r+1):
-	for x in range(2*r+1):
-		f[y][x]=g(x, y, r ,r, sigma, amp)
-
-		print(round(f[y][x], 2), end='\t')
-	print("")
+if DEBUG:
+	print("filter matrix:")
+	for y in range(2*r+1):
+		for x in range(2*r+1):
+			f[y][x]=g(x, y, r ,r, sigma, amp)
+			print(round(f[y][x], 2), end='\t')
+		print("")
 
 print("Gauss blur by usiqwerty v1.0")
 
 
-#image
+out=[]
 for y in range(height):
-	image.append([0]*width)
-	print([0.5]*width)
-###
+	for x in range(width):
+		out.append(int( mean(f,image, x, y) ))
 
-
-print(mean(f,t))
+new=Image.frombytes('L', (width, height), bytes(out))
+new.save('out.bmp', 'BMP')
+new.close()
